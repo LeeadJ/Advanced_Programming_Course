@@ -6,6 +6,7 @@
 #include "stdlib.h"
 #include "unistd.h"
 #include <string.h>
+#include <fcntl.h>
 
 int main() {
 char command[1024];
@@ -48,6 +49,27 @@ while (1)
         argv[i - 2] = NULL;
         outfile = argv[i - 1];
         }
+
+    /* 1) Does command line contain stderr redirection "2>" ? */
+    if (i > 2 && ! strcmp(argv[i - 2], "2>") && argv[i - 1]) {
+        redirect = 1;
+        outfile = argv[i - 1];
+        argv[i - 2] = NULL;
+        argv[i - 1] = NULL;
+    }
+    /* Does command line contain ">>" ? */
+    if (! strcmp(argv[i - 2], ">>")) {
+        redirect = 1;
+        argv[i - 2] = NULL;
+        outfile = argv[i - 1];
+        fd = open(outfile, O_WRONLY | O_CREAT | O_APPEND, 0660);
+        if(fd < 0){
+            perror("open");
+            exit(1);
+        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+        }
     else 
         redirect = 0; 
 
@@ -57,12 +79,21 @@ while (1)
         /* redirection of IO ? */
         if (redirect) {
             fd = creat(outfile, 0660); 
+            if (fd < 0) {
+                    fprintf(stderr, "Failed to create output file '%s': %s\n",
+                            outfile, strerror(errno));
+                    exit(1);
+                }
             close (STDOUT_FILENO) ; 
             dup(fd); 
+            dup2(fd, STDERR_FILENO); 
             close(fd); 
             /* stdout is now redirected */
         } 
         execvp(argv[0], argv);
+        fprintf(stderr, "Failed to execute command '%s': %s\n",
+                    argv[0], strerror(errno));
+            exit(1);
     }
     /* parent continues here */
     if (amper == 0)
