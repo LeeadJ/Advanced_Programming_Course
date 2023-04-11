@@ -8,12 +8,14 @@
 #include <string.h>
 #include <fcntl.h>
 
+#define MAX_PROMPT_LENGTH 100
 int main() {
 char command[1024];
 char *token;
 char *outfile;
 int i, fd, amper, redirect, retid, status;
 char *argv[10];
+char prompt[MAX_PROMPT_LENGTH] = "mypromp";
 
 while (1)
 {
@@ -70,6 +72,13 @@ while (1)
         dup2(fd, STDOUT_FILENO);
         close(fd);
         }
+
+    if(!strcmp(argv[0], "echo")){
+        for(int index=1; index<i; index++){
+            printf("%s ", argv[index]);
+        }
+        printf("\n");
+    }
     else 
         redirect = 0; 
 
