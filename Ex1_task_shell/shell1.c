@@ -50,4 +50,4 @@ while (1) {
     if (amper == 0)
         wait(NULL);
 }
-}
+/**This is task2*/
