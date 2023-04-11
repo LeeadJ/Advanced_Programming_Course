@@ -7,12 +7,14 @@
 #include "unistd.h"
 #include <string.h>
 
+#define MAX_PROMPT_LENGTH 100
 int main() {
 char command[1024];
 char *token;
 char *outfile;
 int i, fd, amper, redirect, retid, status;
 char *argv[10];
+char prompt[MAX_PROMPT_LENGTH] = "mypromp";
 
 while (1)
 {
@@ -48,6 +50,37 @@ while (1)
         argv[i - 2] = NULL;
         outfile = argv[i - 1];
         }
+<<<<<<< HEAD
+=======
+
+    /* 1) Does command line contain stderr redirection "2>" ? */
+    if (i > 2 && ! strcmp(argv[i - 2], "2>") && argv[i - 1]) {
+        redirect = 1;
+        outfile = argv[i - 1];
+        argv[i - 2] = NULL;
+        argv[i - 1] = NULL;
+    }
+    /* Does command line contain ">>" ? */
+    if (! strcmp(argv[i - 2], ">>")) {
+        redirect = 1;
+        argv[i - 2] = NULL;
+        outfile = argv[i - 1];
+        fd = open(outfile, O_WRONLY | O_CREAT | O_APPEND, 0660);
+        if(fd < 0){
+            perror("open");
+            exit(1);
+        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+        }
+
+    if(!strcmp(argv[0], "echo")){
+        for(int index=1; index<i; index++){
+            printf("%s ", argv[index]);
+        }
+        printf("\n");
+    }
+>>>>>>> 275aeaa... task3/done
     else 
         redirect = 0; 
 
