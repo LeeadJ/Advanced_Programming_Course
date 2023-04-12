@@ -11,7 +11,7 @@ int main() {
 char command[1024];
 char *token;
 char *outfile;
-int i, fd, amper, redirect, retid, status;
+int i, fd, amper, redirect, retid, status, append_redirect;
 char *argv[10];
 
 while (1)
@@ -48,6 +48,13 @@ while (1)
         argv[i - 2] = NULL;
         outfile = argv[i - 1];
         }
+
+    else if(! strcmp(argv[i - 2], ">>")){
+        append_redirect = 1;
+        argv[i-2] = NULL;
+        outfile = argv[i-1];
+    }
+
     else if(!strcmp(argv[i-2], "2>")){
         redirect = 1;
         argv[i-2] = NULL;
@@ -71,6 +78,14 @@ while (1)
             close(fd); 
             /* stdout is now redirected */
         } 
+        else if(append_redirect){
+        fd = open(outfile, O_WRONLY | O_CREAT | O_APPEND, 0660);
+        close(STDERR_FILENO);
+        dup(fd);
+        close(fd);
+        /* stdout is now redirected to file in append mode */
+        }
+
         execvp(argv[0], argv);
     }
     /* parent continues here */
