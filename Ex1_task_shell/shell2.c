@@ -54,12 +54,6 @@ while (1)
         append_redirect = 1;
         argv[i-2] = NULL;
         outfile = argv[i-1];
-        // fd = open(outfile, O_WRONLY | O_CREAT | O_APPEND, 0660);
-        // close(STDOUT_FILENO);
-        // dup(fd);
-        // close(STDERR_FILENO);
-        // dup(fd);
-        // close(fd);
     }
 
     else if(!strcmp(argv[i-2], "2>")){
@@ -77,6 +71,21 @@ while (1)
     /* Command to change the prompt*/
     if(i == 3 && !strcmp(argv[0], "prompt") && !strcmp(argv[1], "=")){
         strncpy(prompt, argv[2], 1024);
+        continue;
+    }
+
+    /* Command to echo arguments*/
+    if(!strcmp(argv[0], "echo")){
+        for(int j=1; j<i; j++){
+            printf("%s ", argv[j]);
+        }
+        printf("\n");
+        continue;
+    }
+
+    /* Command to echo status */
+    if (!strcmp(argv[0], "echo") && !strcmp(argv[1], "$?")) {
+        printf("%d\n", status);
         continue;
     }
 
@@ -114,3 +123,14 @@ while (1)
         close(fd);
 }
 }
+
+
+
+/*
+ls -l nofile 2> mylog
+ls -l >> mylog
+prompt = myprompt
+echo abc xyz
+echo $?
+
+*/
