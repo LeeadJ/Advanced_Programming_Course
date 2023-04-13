@@ -44,18 +44,21 @@ while (1)
     else 
         amper = 0; 
 
+    /* Does command line contain ">" */ 
     if (! strcmp(argv[i - 2], ">")) {
         redirect = 1;
         argv[i - 2] = NULL;
         outfile = argv[i - 1];
         }
 
+    /* Does command line contain ">>" */ 
     else if(! strcmp(argv[i - 2], ">>")){
         append_redirect = 1;
         argv[i-2] = NULL;
         outfile = argv[i-1];
     }
 
+    /* Does command line contain "2>" */ 
     else if(!strcmp(argv[i-2], "2>")){
         redirect = 1;
         argv[i-2] = NULL;
@@ -89,6 +92,16 @@ while (1)
         continue;
     }
 
+    /* Command to change directory */
+    if (!strcmp(argv[0], "cd")) {
+        if (i < 2) {
+            fprintf(stderr, "cd: missing operand\n");
+        }
+        else if (chdir(argv[1]) != 0) {
+            fprintf(stderr, "cd: %s: No such file or directory\n", argv[1]);
+        }
+        continue;
+    }
     /* for commands not part of the shell command language */ 
 
     if (fork() == 0) { 
