@@ -23,7 +23,10 @@ while (1)
     command[strlen(command) - 1] = '\0';
     // printf("Command=%s: ", command);
     // printf("last_command=%s: \n", last_command);
-    
+
+    /* Check if user wants to quit */
+    if (!strcmp(command, "quit")) 
+        break;
 
     /* Check if last command needs to be executed */
     if (!strcmp(command, "!!")) {
