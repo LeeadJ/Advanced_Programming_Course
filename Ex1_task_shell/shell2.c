@@ -124,13 +124,17 @@ while (1)
     /* Command to echo arguments*/
     if(!strcmp(argv[0], "echo")){
         for(int j=1; j<i; j++){
-            printf("%s ", argv[j]);
+            if(argv[j][0] == '$'){
+                char *var = argv[j] + 1;
+                char *str = getenv(var);
+                printf("%s ", str);
+            }
+            else
+                printf("%s ", argv[j]);
         }
         printf("\n");
         continue;
     }
-
-    
 
     /* Command to change directory */
     if (!strcmp(argv[0], "cd")) {
@@ -142,6 +146,20 @@ while (1)
         }
         continue;
     }
+
+  
+    if(i == 3 && argv[0][0] == '$' && !strcmp(argv[1], "=")){
+        char *var = argv[0] + 1;
+        setenv(var, argv[2], 1);
+        continue;
+    }
+
+
+
+
+
+
+
     /* for commands not part of the shell command language */ 
 
     if (fork() == 0) { 
