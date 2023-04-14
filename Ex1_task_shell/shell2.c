@@ -117,7 +117,7 @@ while (1)
 
     /* Command to echo status */
     if (!strcmp(argv[0], "echo") && !strcmp(argv[1], "$?")) {
-        printf("%d\n", status);
+        printf("%d\n", WEXITSTATUS(status));
         continue;
     }
 
