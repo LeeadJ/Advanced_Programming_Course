@@ -154,6 +154,12 @@ while (1)
         continue;
     }
 
+    if(!strcmp(argv[0], "read")){
+        char* str = getenv(argv[1]);
+        printf("%s \n", str);
+        continue;
+    }
+
 
 
 
