@@ -9,6 +9,7 @@
 
 int main() {
 char command[1024];
+char last_command[1024] = "";
 char *token;
 char *outfile;
 int i, fd, amper, redirect, retid, status, append_redirect;
@@ -20,6 +21,20 @@ while (1)
     printf("%s: ", prompt);
     fgets(command, 1024, stdin);
     command[strlen(command) - 1] = '\0';
+    // printf("Command=%s: ", command);
+    // printf("last_command=%s: \n", last_command);
+    
+
+    /* Check if last command needs to be executed */
+    if (!strcmp(command, "!!")) {
+        if (strlen(last_command) == 0) {
+            continue;
+        }
+        strcpy(command, last_command);
+    } else {
+        /* Save current command */
+        strcpy(last_command, command);
+    }
 
     /* parse command line */
     i = 0;
@@ -33,13 +48,17 @@ while (1)
     argv[i] = NULL;
 
     /* Is command empty */
-    if (argv[0] == NULL)
+    if (argv[0] == NULL){
+        // printf("\n");
         continue;
+    }
+        
 
     /* Does command line end with & */ 
     if (! strcmp(argv[i - 1], "&")) {
         amper = 1;
         argv[i - 1] = NULL;
+        // printf("\n");
     }
     else 
         amper = 0; 
@@ -49,6 +68,7 @@ while (1)
         redirect = 1;
         argv[i - 2] = NULL;
         outfile = argv[i - 1];
+        // printf("\n");
         }
 
     /* Does command line contain ">>" */ 
@@ -56,6 +76,7 @@ while (1)
         append_redirect = 1;
         argv[i-2] = NULL;
         outfile = argv[i-1];
+        // printf("\n");
     }
 
     /* Does command line contain "2>" */ 
@@ -67,6 +88,7 @@ while (1)
         close(STDERR_FILENO);
         dup(fd);
         close(fd);
+        // printf("\n");
     }
     else 
         redirect = append_redirect = 0; 
