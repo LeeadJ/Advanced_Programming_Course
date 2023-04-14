@@ -52,6 +52,7 @@ while (1)
 
     /* Is command empty */
     if (argv[0] == NULL){
+        status = 1;
         // printf("\n");
         continue;
     }
@@ -61,6 +62,7 @@ while (1)
     if (! strcmp(argv[i - 1], "&")) {
         amper = 1;
         argv[i - 1] = NULL;
+        status = 1;
         // printf("\n");
     }
     else 
@@ -71,6 +73,7 @@ while (1)
         redirect = 1;
         argv[i - 2] = NULL;
         outfile = argv[i - 1];
+        status = 1;
         // printf("\n");
         }
 
@@ -79,6 +82,7 @@ while (1)
         append_redirect = 1;
         argv[i-2] = NULL;
         outfile = argv[i-1];
+        status = 1;
         // printf("\n");
     }
 
@@ -91,6 +95,7 @@ while (1)
         close(STDERR_FILENO);
         dup(fd);
         close(fd);
+        status = 1;
         // printf("\n");
     }
     else 
@@ -99,6 +104,14 @@ while (1)
     /* Command to change the prompt*/
     if(i == 3 && !strcmp(argv[0], "prompt") && !strcmp(argv[1], "=")){
         strncpy(prompt, argv[2], 1024);
+        status = 1;
+        continue;
+    }
+
+    /* Command to echo status */
+    if (!strcmp(argv[0], "echo") && !strcmp(argv[1], "$?")) {
+        printf("%d\n", status);
+        status = 1;
         continue;
     }
 
@@ -107,15 +120,12 @@ while (1)
         for(int j=1; j<i; j++){
             printf("%s ", argv[j]);
         }
+        status = 1;
         printf("\n");
         continue;
     }
 
-    /* Command to echo status */
-    if (!strcmp(argv[0], "echo") && !strcmp(argv[1], "$?")) {
-        printf("%d\n", status);
-        continue;
-    }
+    
 
     /* Command to change directory */
     if (!strcmp(argv[0], "cd")) {
@@ -125,6 +135,7 @@ while (1)
         else if (chdir(argv[1]) != 0) {
             fprintf(stderr, "cd: %s: No such file or directory\n", argv[1]);
         }
+        status = 1;
         continue;
     }
     /* for commands not part of the shell command language */ 
@@ -165,10 +176,7 @@ while (1)
 
 
 /*
-ls -l nofile 2> mylog
-ls -l >> mylog
-prompt = myprompt
-echo abc xyz
-echo $?
+task 4
+task 8
 
 */
