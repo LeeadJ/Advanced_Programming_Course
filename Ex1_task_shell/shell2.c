@@ -6,6 +6,12 @@
 #include "stdlib.h"
 #include "unistd.h"
 #include <string.h>
+#include <signal.h>
+
+void handle_sigint(int sig){
+    printf("\nYou typed Control-C!");
+    fflush(stdout);
+}
 
 int main() {
 char command[1024];
@@ -16,10 +22,17 @@ int i, fd, amper, redirect, retid, status, append_redirect;
 char *argv[10];
 char prompt[1024] = "hello";
 
+// Register the signal handler
+signal(SIGINT, handle_sigint);
+
 while (1)
 {
     printf("%s: ", prompt);
-    fgets(command, 1024, stdin);
+    fflush(stdout);
+    if (fgets(command, 1024, stdin) == NULL) {
+        // Handle EOF or error
+        break;
+    }
     command[strlen(command) - 1] = '\0';
     // printf("Command=%s: ", command);
     // printf("last_command=%s: \n", last_command);
