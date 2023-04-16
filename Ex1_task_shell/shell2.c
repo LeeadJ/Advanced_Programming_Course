@@ -22,6 +22,10 @@ void handle_sigint(int sig){
 int main() {
 
     char *command = malloc(1024);
+    char if_command[1024];
+    char then_command[1024];
+    char next_command[1024];
+    char cmd_cpy[1024];
     char last_command[1024] = "";
     char *cmds[NUM_STRINGS];
     char *token;
@@ -29,24 +33,41 @@ int main() {
     int i, fd, amper, redirect, retid, status, append_redirect, numPipes, num_cmds;
     char *argv[NUM_STRINGS];
     char prompt[1024] = "hello";
+    int if_status, fi_flag = 0;;
 
     // Register the signal handler
     signal(SIGINT, handle_sigint);
 
     while (1){
-
-        printf("%s: ", prompt);
-        fflush(stdout);
-        if (fgets(command, 1024, stdin) == NULL) {
-            if(command[strlen(command)-1] != '\n'){
-                printf("Command buffer is overflowed\n");
-                exit(1);
+        if(fi_flag == 1){
+            fi_flag = 0;
+            if_command[0] = '\0';
+            if(WEXITSTATUS(status) == 0){
+                // if command is true:
+                command = then_command;
+                then_command[0] = '\0';
             }
-            // Handle EOF or error
-            break;
+            else{
+                command = next_command;
+                next_command[0] = '\0';
+            }
+            continue;
         }
+        else{
+            printf("%s: ", prompt);
+            fflush(stdout);
+            if (fgets(command, 1024, stdin) == NULL) {
+                if(command[strlen(command)-1] != '\n'){
+                    printf("Command buffer is overflowed\n");
+                    exit(1);
+                }
+                // Handle EOF or error
+                break;
+            }
+        }
+        
         command[strlen(command) - 1] = '\0';
-
+        strcpy(cmd_cpy, command);
         /* Check if user wants to quit */
         if (!strcmp(command, "quit")) 
             break;
@@ -62,13 +83,15 @@ int main() {
             strcpy(last_command, command);
         }
 
+        
+
 
         /* parse command line */
-        printf("Command: %s\n", command);
+        // printf("Command: %s\n", command);
 
         //////////////////////////////////////////////////////////////
         if(strchr(command, '|') != NULL){
-            printf("Pipe Command\n");
+            // printf("Pipe Command\n");
             // Command is a pipe command:
             num_cmds = 0;
             for(i=0; i<NUM_STRINGS; i++){
@@ -80,14 +103,14 @@ int main() {
                 while(*token == ' ') {
                     token++;
                 }
-                printf("%s\n", token);
+                // printf("%s\n", token);
                 strcpy(cmds[num_cmds], token);
                 token = strtok(NULL, "|");
                 num_cmds++;
             }
             numPipes = num_cmds -1;
-            printf("numPipes: %d\n", numPipes);
-            printf("num_cmds: %d\n", num_cmds);
+            // printf("numPipes: %d\n", numPipes);
+            // printf("num_cmds: %d\n", num_cmds);
         }///////////////////////////////////////////////////////////////
 
         else{
@@ -122,6 +145,8 @@ int main() {
                 argv[i] = malloc(MAX_LENGTH * sizeof(char));
                 // printf("i=%d index=%s, \n", i,argv[i]);
             }
+
+            // Copying the words of the command as arguments in argv[]:
             i = 0;
             while (token != NULL)
             {
@@ -147,6 +172,70 @@ int main() {
             if (argv[0] == NULL){
                 // printf("\n");
                 continue;
+            }
+
+            /* Adding the "if" command */
+            // printf("before: %s\n", cmd_cpy);
+            if(cmd_cpy[0] == 'i' && cmd_cpy[1] == 'f'){
+                
+                
+                memcpy(if_command, cmd_cpy + 3, strlen(cmd_cpy) -3);
+                printf("if command:: %s\n", if_command);
+                
+                // check if next input is the word "then":
+                char then[1024];
+                fgets(then, 1024, stdin);
+                then[strcspn(then, "\n")] = '\0';
+
+                // printf("then: %s\n", then);
+                if(strcmp(then, "then") == 0){
+                    // printf("User entered then\n");
+
+                    
+                    fgets(then_command, 1024, stdin);
+                    then_command[strcspn(then_command, "\n")] = '\0';
+                    printf("then command: %s\n", then_command);
+
+                    //save next command to check if its "else" of "fi".
+                    
+                    fgets(next_command, 1024, stdin);
+                    next_command[strcspn(next_command, "\n")] = '\0';
+                    printf("next command: %s\n", next_command);
+
+                    if(strcmp(next_command, "fi") == 0){
+                        printf("User entered fi\n");
+                        // if the "if" statement is true, run the "then command":
+                        memcpy(command, if_command, strlen(if_command));
+                        fi_flag = 1;
+                        continue;
+                    }
+
+                    else if(strcmp(next_command, "else")){
+                        // if thhere is an else command:
+                        printf("User entered else .\n");
+                        char else_command[1024];
+                        fgets(else_command, 1024, stdin);
+                        else_command[strcspn(else_command, "\n")] = '\0';
+                        char fi[1024];
+                        fgets(fi, 1024, stdin);
+                        fi[strcspn(fi, "\n")] = '\0';
+
+                        if(strcmp(fi, "fi")){
+                            printf("User entered fi\n");
+                            // if the "if" statement is true, run the "then command":
+                            printf("User entered fi\n");
+                            // if the "if" statement is true, run the "then command":
+                            memcpy(command, if_command, strlen(if_command));
+                            fi_flag = 1;
+                            continue;
+                            }
+                    }
+
+                }
+                
+                else{
+                    printf("--Error IN FLOW--\n");
+                }
             }
 
             /* Does command line end with & */ 
@@ -284,14 +373,6 @@ int main() {
                 // Error
                 perror("fork");
             } 
-                
-            // else {
-            //     // In parent process
-            //     if (! amper) {
-            //         // Wait for child process to finish
-            //         waitpid(pid, &status, 0);
-            //     }
-            // }
 
             pipe_index+=2;
         }
