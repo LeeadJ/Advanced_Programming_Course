@@ -15,7 +15,7 @@ int main() {
     char command[1024];
     char *token;
     char *outfile, *error_file;
-    int i, fd, amper, redirect, retid, status, arg_counter, append_redirect, prev_status, isPiping;
+    int i, fd, amper, redirect, retid, status, arg_counter, append_redirect, isPiping;
     char *argv[10];
     char prompt[1024] = "hello";
 
@@ -67,6 +67,41 @@ int main() {
             }
             continue;
         }
+
+        /* Adding echo command*/
+        if(!strcmp(argv[0], "echo")){
+            if(argv[1] == NULL){
+                perror("--ECHO ERROR (MISSING 2ND ARGUMENT)--\n");
+                continue;
+            }
+            /* Addding $? command*/
+            if(!strcmp(argv[1], "$?")){
+                printf("%d\n", WEXITSTATUS(status));
+                continue;
+            }
+
+            for(int j=1; j<i; j++){
+                if(argv[j][0] == '$'){
+                    char *var = argv[j] + 1;
+                    char *str = getenv(var);
+                    printf("%s ", str);
+                }
+                else
+                    printf("%s ", argv[j]);
+            }
+            printf("\n");
+            continue;
+        }
+
+        /* Addign variables to the shell  */
+        if(i == 3 && argv[0][0] == '$' && !strcmp(argv[1], "=")){
+            char *var = argv[0] + 1;
+            setenv(var, argv[2], 1);
+            continue;
+        }
+
+
+
         /* Does command line contain ">" or ">>" */ 
         if(i > 1){
             if (! strcmp(argv[i - 2], ">") || (! strcmp(argv[i - 2], ">>"))) {
@@ -135,7 +170,7 @@ int main() {
                 if(retid < 0){
                     perror("--RETURN ID ERROR (NEGATICE ID)--");
                 } else {
-                    prev_status = WEXITSTATUS(status);
+                    WEXITSTATUS(status);
                 }
 
             }
