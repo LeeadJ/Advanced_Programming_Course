@@ -128,6 +128,18 @@ int main() {
             }
         }
 
+        /* Adding cd command*/
+        if(!strcmp(argv[0], "cd")){
+            if(argv[1] == NULL){
+                perror("--CD ERROR (MISSING 2ND ARGUMENT)--\n");
+                continue;
+            }
+            else if (chdir(argv[1]) != 0) {
+                fprintf(stderr, "cd: %s: --ERROR (No such file or directory)--\n", argv[1]);
+            }
+            continue;
+        }
+
         /* for commands not part of the shell command language */ 
         pid_t pid = fork();
         if (pid == 0) { 
