@@ -13,6 +13,7 @@
 
 int main() {
     char command[1024];
+    char last_command[1024] = "";
     char *token;
     char *outfile, *error_file;
     int i, fd, amper, redirect, retid, status, arg_counter, append_redirect, isPiping;
@@ -27,6 +28,17 @@ int main() {
         fflush(stdout);
         fgets(command, 1024, stdin);
         command[strlen(command) - 1] = '\0';
+
+        /* Check if last command needs to be executed */
+        if (!strcmp(command, "!!")) {
+            if (strlen(last_command) == 0) {
+                continue;
+            }
+            strcpy(command, last_command);
+        } else {
+            /* Save current command */
+            strcpy(last_command, command);
+        }
 
 
         /* parse command line */
