@@ -9,9 +9,14 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-
+void handler(int sig)
+{
+    printf("\nYou typed Control-C!\n");
+    fflush(stdout);
+}
 
 int main() {
+    signal(SIGINT, handler);
     char command[1024];
     char last_command[1024] = "";
     char *token;
@@ -26,7 +31,10 @@ int main() {
     {
         printf("%s: ", prompt);
         fflush(stdout);
-        fgets(command, 1024, stdin);
+        if(fgets(command, 1024, stdin) == NULL){
+            // Handle EOF or error
+            break;
+        }
         command[strlen(command) - 1] = '\0';
 
         /* Adding quit command */
