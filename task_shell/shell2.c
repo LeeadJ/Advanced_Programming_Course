@@ -54,6 +54,19 @@ int main() {
         else 
             amper = 0; 
 
+
+        /* Adding Prompt Command*/
+        if(!strcmp(argv[0], "prompt")){
+            if(arg_counter > 1 && !strcmp(argv[1], "=")){
+                if(argv[2] == NULL){
+                    perror("--PROMPT ERROR (MISSING 2ND ARGUMENT)--\n");
+                }
+                else{
+                    strncpy(prompt, argv[2], 1024);
+                }
+            }
+            continue;
+        }
         /* Does command line contain ">" or ">>" */ 
         if(i > 1){
             if (! strcmp(argv[i - 2], ">") || (! strcmp(argv[i - 2], ">>"))) {
