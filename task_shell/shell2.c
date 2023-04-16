@@ -29,7 +29,11 @@ int main() {
         fgets(command, 1024, stdin);
         command[strlen(command) - 1] = '\0';
 
-        /* Check if last command needs to be executed */
+        /* Adding quit command */
+        if (!strcmp(command, "quit")) 
+            break;
+
+        /* Adding "!!" command */
         if (!strcmp(command, "!!")) {
             if (strlen(last_command) == 0) {
                 continue;
