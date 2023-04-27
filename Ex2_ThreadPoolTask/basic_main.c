@@ -12,5 +12,6 @@ int main(int argc, char *argv[])
 	decrypt(data,key);
 	printf("decripted data: %s\n",data);
 
+
 	return 0;
 }
