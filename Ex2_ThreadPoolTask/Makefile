@@ -5,7 +5,7 @@ task:	codec.h basic_main.c
 	gcc basic_main.c -L. -l Codec -o encoder
 
 thread_pool:	thread_pool.h thread_pool.c
-		gcc -g thread_pool.c ./libCodec.so -o tester -pthread
+		gcc -g thread_pool.c ./libCodec.so -o coder -pthread
 
 .PHONY: clean
 clean:
