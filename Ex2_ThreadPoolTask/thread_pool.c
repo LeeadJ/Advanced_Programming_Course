@@ -1,210 +1,195 @@
-#include "codec.h"
-#include <pthread.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <pthread.h>
 #include "thread_pool.h"
+#include "codec.h"
 
-#define MAX_DATA_SIZE 1024
+#define MAX_DATA_BLOCK 1024
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void task_queue_init(task_queue_t *queue);
-void task_queue_push(task_queue_t *queue, task_node_t *task_node);
-task_node_t* task_queue_pop(task_queue_t *queue);
-void thread_pool_init(thread_pool_t *pool, char **argv); 
-void thread_pool_shutdown(thread_pool_t *pool); 
-void *worker_thread(void *arg); 
+// function to encrypt/decrypt data using the given key
+void encrypt_decrypt_data(char *data, int key, int mode);
+
+// function to be executed by worker threads
+void *worker_thread(void *arg);
+
+// initializes the thread pool
+void init_pool(thread_pool_t *pool);
+
+// waits for all threads to finish and then destroys the thread pool
+void wait_and_destroy_pool(thread_pool_t *pool);
+
+// destroys the thread pool
+void destroy_pool(thread_pool_t *pool);
+
 
 
 int main(int argc, char *argv[])
 {
-
+    // Check if the number of arguments is correct, and if the second argument is either "-d" or "-e":
     if(argc != 3 || (!(strcmp(argv[2], "-d")) && !(strcmp(argv[2], "-e"))))
     {
           printf("--ERROR IN MAIN ARGUMENTS--");
           exit(EXIT_FAILURE);  
     }
-    char c;
-    char *data = (char*)malloc(sizeof(char) * MAX_DATA_SIZE);
-    int counter=0;
+
+    // Convert the first and second arguments to an integer and store it in the key variable
+    int key = atoi(argv[1]);
+    int mode=0;
+
+    // If the second argument is "-d", set mode to 1
+    if(!strcmp(argv[2], "-d"))
+        mode = 1;
+
+    // Create an encryption_args_t struct and initialize its fields
+    encryption_args_t args = { .key = key, .mode = mode };
+
+    // Allocate memory for the thread pool struct and initialize the pool
     thread_pool_t *pool = malloc(sizeof(thread_pool_t));
-    // init the task pool.
-    thread_pool_init(pool, argv);
+    pool->destroy = &destroy_pool; // Set the destroy function pointer
+    init_pool(pool);
 
-    while((c = getchar()) != EOF)
+    // Create threads and pass them the worker thread function and the argument array
+    for(int i=0; i < pool->number_of_threads; i++)
     {
-        data[counter] = c;
-        counter++;
+        pthread_create(&pool->threads_array[i], NULL, worker_thread, (void *)&args);
+    }
 
-        // When reaching max size, creat a new task and add to the queue.
-        if(counter == MAX_DATA_SIZE)
+    // Wait for all threads to finish executing and then destroy the thread pool and mutex
+    wait_and_destroy_pool(pool);
+    pthread_mutex_destroy(&mutex);
+
+    return 0;
+}
+
+
+
+// initializes the thread pool
+void init_pool(thread_pool_t *pool) 
+{
+    // gets the number of online processors
+    int system_thread_num = sysconf(_SC_NPROCESSORS_ONLN);
+    pool->number_of_threads = system_thread_num;
+
+    // dynamically allocates memory for the threads_array in the pool
+    pool->threads_array = calloc(system_thread_num, sizeof(pthread_t));
+    if (pool->threads_array == NULL) 
+    {
+        printf("Error: failed to allocate memory for threads array\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialize the mutex in the pool
+    if (pthread_mutex_init(&pool->mutex, NULL) != 0) 
+    {
+        printf("Error: failed to initialize mutex\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // creates the threads in the pool and assigns them the default_worker function
+    for (int i = 0; i < system_thread_num; i++) 
+    {
+        if (pthread_create(&pool->threads_array[i], NULL, default_worker, (void*)pool) != 0) 
         {
-            task_node_t *new_task = malloc(sizeof(task_node_t));
-            new_task->value = malloc(sizeof(char) * strlen(data) + 1);
-            strcpy(new_task->value, data);
-            new_task->next = NULL;
-            task_queue_push(pool->task_queue, new_task);
-            counter = 0;
-        }
-    }
-
-    // if reached eEOF but data still is not empty, create new task"
-    if(counter > 0)
-    {
-        task_node_t *new_task = malloc(sizeof(task_node_t));
-        new_task->value = malloc(sizeof(char) * strlen(data) + 1);
-        strcpy(new_task->value, data);
-        new_task->next = NULL;
-        task_queue_push(pool->task_queue, new_task);
-    }
-
-    while(pool->task_queue->head != NULL);
-    thread_pool_shutdown(pool);
-
-    exit(EXIT_SUCCESS);
-}
-
-
-
-
-
-/* Initializing the task queue. */
-void task_queue_init(task_queue_t *queue) 
-{
-    queue->head = NULL;
-    queue->tail = NULL;
-    // init mutex lock to ensure only one thread can access the task queue.
-    pthread_mutex_init(&queue->lock, NULL);
-    //init not empty signal condition so worker threads can wait for tasks to be added.
-    pthread_cond_init(&queue->not_empty, NULL);
-}
-
-
-/* Function to add task to task_queue. */
-void task_queue_push(task_queue_t *queue, task_node_t *task_node) 
-{
-    // set a lock on the queue so no other thread can modify the queue.
-    pthread_mutex_lock(&queue->lock);
-    if (queue->tail == NULL) //queue is empty
-    {
-        queue->head = task_node;
-        queue->tail = task_node;
-    } 
-    else // queue is not empty
-    {
-        queue->tail->next = task_node;
-        queue->tail = task_node;
-    }
-    // set not empty signal to wake up any threads waiting to get a task.
-    pthread_cond_signal(&queue->not_empty);
-    // unlock the queue to allow other threads access.
-    pthread_mutex_unlock(&queue->lock);
-}
-
-/* Function to remove task from queue. */
-task_node_t* task_queue_pop(task_queue_t *queue) 
-{
-    if(queue->head == NULL) 
-        return NULL;
-    
-    // lock the queue.
-    pthread_mutex_lock(&queue->lock);
-    task_node_t *task_node = queue->head;
-    if (queue->head == queue->tail) 
-    {
-        queue->head = NULL;
-        queue->tail = NULL;
-    } 
-
-    else 
-        queue->head = queue->head->next;
-
-    pthread_mutex_unlock(&queue->lock);
-    return task_node;
-}
-
-
-/* Function to init the thread pool. */
-void thread_pool_init(thread_pool_t *pool, char **argv) 
-{
-    // init num of threads to num of available CPUs on the system.
-    pool->num_threads = sysconf(_SC_NPROCESSORS_ONLN);
-    pool->threads = malloc(sizeof(pthread_t) * pool->num_threads);
-    pool->task_queue = malloc(sizeof(task_queue_t));
-    // init the task.
-    task_queue_init(pool->task_queue);
-    // init the mutex lock.
-    pthread_mutex_init(&pool->lock, NULL);
-    //init not empty condition.
-    pthread_cond_init(&pool->not_empty, NULL);
-    // init not full condition.
-    pthread_cond_init(&pool->not_full, NULL);
-    // set encyption key
-    pool->key = atoi(argv[1]);
-    // set shutdown.
-    pool->shutdown = 0;
-
-    // set encyption/decryption functions:
-    char *flag = argv[2];
-    if(!strcmp(flag, "-e")) 
-        pool->func = encrypt;
-    else 
-        pool->func = decrypt;
-    
-    // Creating the worker threads:
-    for (int i = 0; i < pool->num_threads; i++) 
-    {
-        if(pthread_create(&pool->threads[i], NULL, worker_thread, (void*)pool))
-        {
-            printf("--ERROR WHILE CREATING THREAD\n");
+            printf("Error: failed to create thread %d\n", i);
             exit(EXIT_FAILURE);
         }
     }
 }
 
-/* Function to set the shutdown flag to the pool to 1. Signals all threads
-   waiting on the "not_empty" condition to wake up.*/
-void thread_pool_shutdown(thread_pool_t *pool) 
-{
-    // lock the pool for critical code.
-    pthread_mutex_lock(&pool->lock);
-    pool->shutdown = 1;
-    // send signal to all "not_empty" condition waiting threads the pool is shutting down.
-    pthread_cond_broadcast(&pool->not_empty);
-    pthread_mutex_unlock(&pool->lock);
 
-    // join the workerthreads.
-    for (int i = 0; i < pool->num_threads; i++) 
+
+
+
+void destroy_pool(thread_pool_t *pool) 
+{
+    for (int i = 0; i < pool->number_of_threads; i++) 
     {
-        pthread_join(pool->threads[i], NULL);
+        pthread_join(pool->threads_array[i], NULL);
     }
 
-    free(pool->threads);
-    free(pool->task_queue);
-    pthread_mutex_destroy(&pool->lock);
-    pthread_cond_destroy(&pool->not_empty);
-    pthread_cond_destroy(&pool->not_full);
+    free(pool->threads_array);
 }
 
 
-/* Function definition for the worker thread. */
+
+void wait_and_destroy_pool(thread_pool_t *pool) 
+{
+    destroy_pool(pool);
+}
+
+
+
+void encrypt_decrypt_data(char *data, int key, int mode)
+{
+    switch (mode) {
+        case 0:
+            encrypt(data, key);
+            break;
+        case 1:
+            decrypt(data, key);
+            break;
+        default:
+            printf("Error: mode variable mismatch");
+            exit(EXIT_FAILURE);
+            break;
+    }
+}
+
+
+
+
 void *worker_thread(void *arg) 
 {
-    // casting arg to thread_pool_t pointer, to allow worker thread to access the pool's info.
-    thread_pool_t *pool = (thread_pool_t *) arg;
+    int key = *(int *)arg;
+    int mode = *((int *)arg + 1);
+    char c;
+    int counter = 0;
+
+    // Initializes a character array to hold the data block to be encrypted/decrypted
+    char data_block[MAX_DATA_BLOCK];
+    
+    // The worker thread runs in an infinite loop, reading input characters from the standard
+    // input stream and processing them
     while (1) 
     {
-        // get next task from the task_queue.
-        task_node_t *task_node = task_queue_pop(pool->task_queue);
-        // If task is NULL, threadpool has been shutdown.
-        if (task_node == NULL) 
-            pthread_exit(NULL);
-        
-        pool->func(task_node->value, pool->key);
-        printf("%s", task_node->value);
-        free(task_node);
-        
-    }
-    return NULL;
-}
+        // Acquires the mutex lock to prevent other threads from accessing the standard input stream
+        pthread_mutex_lock(&mutex);
+        c = getchar();
 
+        // Releases the mutex lock
+        pthread_mutex_unlock(&mutex);
+        
+        // If the end of file character is encountered, the loop is exited
+        if (c == EOF) 
+        {
+            break;
+        }
+        
+        data_block[counter] = c;
+        counter++;
+
+        // If the data block is full, it is encrypted/decrypted, written to the standard output
+        // stream, and the counter is reset to zero
+        if (counter == MAX_DATA_BLOCK) 
+        {
+            encrypt_decrypt_data(data_block, key, mode);
+            fwrite(data_block, 1, counter, stdout);
+            counter = 0;
+        }
+    }
+
+
+    // If there are remaining characters in the data block that have not been processed,
+    // the data block is encrypted/decrypted, written to the standard output stream,
+    // and the thread exits
+    if (counter > 0) 
+    {
+        encrypt_decrypt_data(data_block, key, mode);
+        fwrite(data_block, 1, counter, stdout);
+    }
+
+    pthread_exit(NULL);
+}
